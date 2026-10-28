@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
+import { apiUploadMedia } from '../services/api';
 import {
   STOCK_VIDEOS,
   STOCK_AUDIO,
@@ -17,11 +18,18 @@ import {
   Zap,
   Plus,
   Upload,
-  Play
+  Play,
+  CloudUpload,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 
 export const MediaLibrary: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFilename, setUploadFilename] = useState('');
+
   const {
     activeTab,
     setActiveTab,
@@ -31,18 +39,22 @@ export const MediaLibrary: React.FC = () => {
     updateClipSpeedCurve
   } = useEditorStore();
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
+    const localUrl = URL.createObjectURL(file);
     const isAudio = file.type.startsWith('audio');
     const isVideo = file.type.startsWith('video');
 
+    setUploading(true);
+    setUploadProgress(10);
+    setUploadFilename(file.name);
+
     if (isVideo) {
-      // Capture canvas snapshot frame for video thumbnail (Action Item 5)
+      // Capture canvas snapshot frame for video thumbnail
       const tempVideo = document.createElement('video');
-      tempVideo.src = url;
+      tempVideo.src = localUrl;
       tempVideo.crossOrigin = 'anonymous';
       tempVideo.muted = true;
       tempVideo.currentTime = 0.5;
@@ -58,7 +70,7 @@ export const MediaLibrary: React.FC = () => {
 
           addClipToTrack('video', {
             name: file.name,
-            assetUrl: url,
+            assetUrl: localUrl,
             durationMs: Math.min(10000, durMs),
             sourceDurationMs: durMs,
             mimeType: file.type
@@ -69,7 +81,7 @@ export const MediaLibrary: React.FC = () => {
       tempVideo.onerror = () => {
         addClipToTrack('video', {
           name: file.name,
-          assetUrl: url,
+          assetUrl: localUrl,
           durationMs: 8000,
           sourceDurationMs: 15000,
           mimeType: file.type
@@ -81,12 +93,27 @@ export const MediaLibrary: React.FC = () => {
       );
       addClipToTrack(isAudio ? 'audio' : 'pip', {
         name: file.name,
-        assetUrl: url,
+        assetUrl: localUrl,
         durationMs: 8000,
         sourceDurationMs: 15000,
         mimeType: file.type,
         waveformData: isAudio ? syntheticWave : undefined
       });
+    }
+
+    // Background Cloud Upload (Pillar 48 & 88)
+    try {
+      await apiUploadMedia(file, (pct) => {
+        setUploadProgress(pct);
+      });
+      setUploadProgress(100);
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 1200);
+    } catch (err) {
+      console.warn('[Cloud Upload] Background sync warning:', err);
+      setUploading(false);
     }
   };
 
@@ -148,11 +175,27 @@ export const MediaLibrary: React.FC = () => {
             <div className="upload-header">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="upload-dropzone"
+                disabled={uploading}
+                className={`upload-dropzone ${uploading ? 'is-uploading' : ''}`}
               >
-                <Upload size={18} />
-                <span>Import Local Media</span>
-                <span className="upload-hint">MP4, MOV, WEBM, PNG</span>
+                {uploading ? (
+                  <div className="upload-progress-box">
+                    <div className="upload-progress-header">
+                      <CloudUpload size={16} className="cyan-icon" />
+                      <span className="uploading-name">{uploadFilename}</span>
+                      <span className="uploading-pct">{uploadProgress}%</span>
+                    </div>
+                    <div className="upload-bar-track">
+                      <div className="upload-bar-fill" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload size={18} />
+                    <span>Import Local / S3 Cloud Media</span>
+                    <span className="upload-hint">MP4, MOV, WEBM, PNG (Direct Cloud Streaming)</span>
+                  </>
+                )}
               </button>
               <input
                 ref={fileInputRef}
@@ -449,6 +492,59 @@ export const MediaLibrary: React.FC = () => {
         .upload-dropzone:hover {
           border-color: var(--accent-cyan);
           background: var(--accent-cyan-dim);
+        }
+
+        .upload-dropzone.is-uploading {
+          border-style: solid;
+          border-color: rgba(0, 242, 254, 0.4);
+          background: rgba(0, 242, 254, 0.05);
+          cursor: default;
+        }
+
+        .upload-progress-box {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .upload-progress-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          font-size: 11px;
+          color: var(--text-primary);
+        }
+
+        .uploading-name {
+          font-weight: 600;
+          max-width: 130px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .uploading-pct {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--accent-cyan);
+          font-weight: 700;
+        }
+
+        .upload-bar-track {
+          width: 100%;
+          height: 4px;
+          background: var(--bg-base);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .upload-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #00F2FE, #4FACFE);
+          border-radius: 2px;
+          transition: width 0.2s ease;
         }
 
         .upload-hint {

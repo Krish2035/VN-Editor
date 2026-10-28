@@ -72,10 +72,27 @@ export interface VNTrack {
   clips: VNClip[];
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  createdAt?: string;
+}
+
+export interface InfrastructureStatus {
+  database: string;
+  jobQueue: string;
+  storage: string;
+}
+
 export interface VNProject {
   id: string;
+  userId?: string;
   title: string;
   version: number;
+  createdAt?: string;
+  updatedAt?: string;
   canvas: {
     width: number;
     height: number;
@@ -102,3 +119,4 @@ export interface MediaAssetPreset {
   beats?: number[];
   waveformData?: number[];
 }
+

@@ -10,11 +10,17 @@ import { standardLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { initStorage, UPLOAD_DIR, EXPORT_DIR } from './services/storageService';
 import { registerWebSocketClient } from './services/renderQueue';
+import { verifyDatabaseConnection } from './config/db';
+import { initRedisQueue } from './services/bullQueueService';
 
 dotenv.config();
 
 // Initialize local storage paths
 initStorage();
+
+// Verify PostgreSQL and Redis connections (Pillars 15, 25)
+verifyDatabaseConnection();
+initRedisQueue();
 
 const app = express();
 const port = parseInt(process.env.PORT || '5000', 10);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import { exportProjectLocally } from '../core/clientExporter';
+import { getStoredToken } from '../services/api';
 import confetti from 'canvas-confetti';
 import {
   X,
@@ -10,7 +11,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Film
+  Film,
+  Cpu
 } from 'lucide-react';
 
 export const ExportModal: React.FC = () => {
@@ -108,9 +110,13 @@ export const ExportModal: React.FC = () => {
       setDownloadUrl(null);
 
       const exportProject = getExportProject();
+      const token = getStoredToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch('http://localhost:5000/api/v1/renders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ projectData: exportProject })
       });
 
@@ -227,8 +233,8 @@ export const ExportModal: React.FC = () => {
           >
             <Server size={16} />
             <div className="tab-label-group">
-              <span className="tab-heading">Server FFmpeg Queue</span>
-              <span className="tab-sub">Production Master Output</span>
+              <span className="tab-heading">BullMQ Distributed Queue</span>
+              <span className="tab-sub">Redis Workers & GPU Acceleration</span>
             </div>
           </button>
         </div>

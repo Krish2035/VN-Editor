@@ -1,14 +1,15 @@
 import { Response } from 'express';
-import { TracedRequest } from '../middleware/logger';
-import * as renderQueue from '../services/renderQueue';
-import * as projectService from '../services/projectService';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
+import * as bullQueueService from '../services/bullQueueService';
+import * as dbProjectService from '../services/dbProjectService';
 
-export const startRenderJob = (req: TracedRequest, res: Response) => {
+export const startRenderJob = async (req: AuthenticatedRequest, res: Response) => {
   const { projectId, projectData } = req.body;
+  const userId = req.user?.id || 'guest_user';
 
   let project = projectData;
   if (!project && projectId) {
-    project = projectService.getProjectById(projectId);
+    project = await dbProjectService.getUserProject(projectId, userId);
   }
 
   if (!project) {
@@ -18,25 +19,25 @@ export const startRenderJob = (req: TracedRequest, res: Response) => {
     });
   }
 
-  const job = renderQueue.createRenderJob(project);
+  const job = await bullQueueService.enqueueRenderJob(project, userId);
 
   res.status(202).json({
     success: true,
-    message: 'Render job queued successfully',
+    message: 'Render job queued in distributed processing pipeline',
     data: job
   });
 };
 
-export const getRenderJobStatus = (req: TracedRequest, res: Response) => {
+export const getRenderJobStatus = (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const job = renderQueue.getJobById(id);
+  const job = bullQueueService.getJobById(id);
   if (!job) {
     return res.status(404).json({ success: false, error: 'Render job not found' });
   }
   res.json({ success: true, data: job });
 };
 
-export const listRenderJobs = (req: TracedRequest, res: Response) => {
-  const jobs = renderQueue.getAllJobs();
+export const listRenderJobs = (req: AuthenticatedRequest, res: Response) => {
+  const jobs = bullQueueService.getAllJobs();
   res.json({ success: true, count: jobs.length, data: jobs });
 };

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { VNProject, VNTrack, VNClip, AspectRatio, ColorAdjustments, VNKeyframe } from '../types';
+import { VNProject, VNTrack, VNClip, AspectRatio, ColorAdjustments, VNKeyframe, AuthUser, InfrastructureStatus } from '../types';
+import { apiGetMe, apiSaveProject, apiGetHealth, clearStoredToken, getStoredToken } from '../services/api';
 
 interface HistoryState {
   past: VNProject[];
@@ -28,7 +29,16 @@ export interface EditorStore {
   showExportModal: boolean;
   showSafeMargins: boolean;
   showShortcutsModal: boolean;
+  showAuthModal: boolean;
+  showProjectsModal: boolean;
   activeSnapGuidePx: number | null;
+
+  // Cloud & Commercial SaaS State (Pillars 48, 56, 112)
+  user: AuthUser | null;
+  token: string | null;
+  isSavingProject: boolean;
+  lastSavedTime: string | null;
+  infrastructure: InfrastructureStatus | null;
 
   // Actions
   setProjectTitle: (title: string) => void;
@@ -42,10 +52,20 @@ export interface EditorStore {
   toggleMagnetic: () => void;
   toggleSafeMargins: () => void;
   toggleShortcutsModal: () => void;
+  setShowAuthModal: (show: boolean) => void;
+  setShowProjectsModal: (show: boolean) => void;
   setActiveSnapGuidePx: (px: number | null) => void;
   fitClipToCanvas: (clipId: string, mode: 'fit' | 'fill' | 'reset') => void;
   setActiveTab: (tab: EditorStore['activeTab']) => void;
   setShowExportModal: (show: boolean) => void;
+
+  // Cloud & Auth Actions
+  setUser: (user: AuthUser | null, token: string | null) => void;
+  logout: () => void;
+  saveProjectToCloud: () => Promise<boolean>;
+  loadCloudProject: (proj: VNProject) => void;
+  fetchInfrastructure: () => Promise<void>;
+  initAuthAndSystem: () => Promise<void>;
 
   selectClip: (clipId: string | null, trackId?: string) => void;
   addClipToTrack: (trackType: VNTrack['type'], clipData: Partial<VNClip>) => void;
@@ -288,7 +308,79 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   showExportModal: false,
   showSafeMargins: false,
   showShortcutsModal: false,
+  showAuthModal: false,
+  showProjectsModal: false,
   activeSnapGuidePx: null,
+
+  // Cloud & Auth State
+  user: null,
+  token: getStoredToken(),
+  isSavingProject: false,
+  lastSavedTime: null,
+  infrastructure: null,
+
+  setUser: (user, token) => set({ user, token }),
+
+  logout: () => {
+    clearStoredToken();
+    set({ user: null, token: null });
+  },
+
+  setShowAuthModal: (show) => set({ showAuthModal: show }),
+  setShowProjectsModal: (show) => set({ showProjectsModal: show }),
+
+  saveProjectToCloud: async () => {
+    const { project } = get();
+    set({ isSavingProject: true });
+    try {
+      const saved = await apiSaveProject(project);
+      set({
+        isSavingProject: false,
+        lastSavedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        project: { ...project, id: saved.id, version: saved.version }
+      });
+      return true;
+    } catch (err: any) {
+      console.error('[Cloud] Save project failed:', err);
+      set({ isSavingProject: false });
+      return false;
+    }
+  },
+
+  loadCloudProject: (proj: VNProject) => {
+    saveToHistory(set, get);
+    set({
+      project: proj,
+      currentTimeMs: 0,
+      selectedClipId: proj.tracks[0]?.clips[0]?.id || null,
+      selectedTrackId: proj.tracks[0]?.id || null,
+      showProjectsModal: false
+    });
+  },
+
+  fetchInfrastructure: async () => {
+    const infra = await apiGetHealth();
+    set({ infrastructure: infra });
+  },
+
+  initAuthAndSystem: async () => {
+    try {
+      const infra = await apiGetHealth();
+      set({ infrastructure: infra });
+
+      const token = getStoredToken();
+      if (token) {
+        const user = await apiGetMe();
+        if (user) {
+          set({ user, token });
+        } else {
+          set({ user: null, token: null });
+        }
+      }
+    } catch (e) {
+      console.warn('Init auth & system error:', e);
+    }
+  },
 
   setProjectTitle: (title: string) => {
     saveToHistory(set, get);

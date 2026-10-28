@@ -1,10 +1,11 @@
 import { Response } from 'express';
-import { TracedRequest } from '../middleware/logger';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
 import { ASSETS_FILE, UPLOAD_DIR } from '../services/storageService';
 import { extractMetadata, extractWaveform } from '../services/waveformService';
+import { generatePresignedUploadUrl } from '../services/s3Service';
 import { MediaAsset } from '../types';
 
 const getAllAssets = (): MediaAsset[] => {
@@ -20,12 +21,34 @@ const saveAssets = (assets: MediaAsset[]) => {
   fs.writeFileSync(ASSETS_FILE, JSON.stringify(assets, null, 2), 'utf-8');
 };
 
-export const listAssets = (req: TracedRequest, res: Response) => {
+export const listAssets = (req: AuthenticatedRequest, res: Response) => {
   const assets = getAllAssets();
   res.json({ success: true, count: assets.length, data: assets });
 };
 
-export const uploadMedia = async (req: TracedRequest, res: Response) => {
+/**
+ * Generate Presigned S3 / R2 Direct Upload URL (Pillars 48, 88)
+ */
+export const getPresignedUpload = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { filename, mimeType } = req.body;
+    if (!filename || !mimeType) {
+      return res.status(400).json({ success: false, error: 'filename and mimeType are required' });
+    }
+
+    const userId = req.user?.id || 'guest_user';
+    const presignedData = await generatePresignedUploadUrl(filename, mimeType, userId);
+
+    res.json({
+      success: true,
+      data: presignedData
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+export const uploadMedia = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const file = req.file;
     if (!file) {

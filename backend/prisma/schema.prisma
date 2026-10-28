@@ -1,0 +1,164 @@
+// Prisma Schema for VN Video Editor
+// Designed for PostgreSQL (Pillars 25-32: Composite indexes, strict foreign keys, multi-tenant isolation)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  PRO_CREATOR
+  ADMIN
+}
+
+enum TrackType {
+  text
+  pip
+  video
+  audio
+  sfx
+}
+
+enum RenderStatus {
+  queued
+  rendering
+  completed
+  failed
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         UserRole      @default(USER)
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  projects     Project[]
+  mediaAssets  MediaAsset[]
+  renderJobs   RenderJob[]
+
+  @@index([email])
+}
+
+model Project {
+  id           String        @id @default(uuid())
+  userId       String
+  title        String        @default("Untitled Project")
+  version      Int           @default(1)
+  
+  // Canvas configuration
+  width        Int           @default(1920)
+  height       Int           @default(1080)
+  fps          Int           @default(60)
+  aspectRatio  String        @default("16:9")
+  durationMs   Int           @default(30000)
+
+  // Settings
+  snapToGrid   Boolean       @default(true)
+  rippleEdit   Boolean       @default(true)
+  magnetic     Boolean       @default(true)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks       Track[]
+  renderJobs   RenderJob[]
+
+  @@index([userId, updatedAt])
+}
+
+model Track {
+  id        String    @id @default(uuid())
+  projectId String
+  type      TrackType
+  name      String
+  order     Int       @default(0)
+  muted     Boolean   @default(false)
+  locked    Boolean   @default(false)
+  visible   Boolean   @default(true)
+
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clips     Clip[]
+
+  @@index([projectId, order])
+}
+
+model Clip {
+  id               String   @id @default(uuid())
+  trackId          String
+  name             String
+  assetId          String?
+  assetUrl         String?
+  startMs          Int      @default(0)
+  durationMs       Int      @default(5000)
+  sourceDurationMs Int      @default(5000)
+  trimInMs         Int      @default(0)
+  trimOutMs        Int      @default(5000)
+  speed            Float    @default(1.0)
+  volume           Float    @default(1.0)
+  fadeInMs         Int      @default(300)
+  fadeOutMs        Int      @default(300)
+
+  // Complex configurations stored as JSON
+  speedCurveJson   String?  // Array of [time, speed] points
+  transformJson    String?  // { x, y, scale, rotation, opacity }
+  colorJson        String?  // { brightness, contrast, saturation, vignette, lutId }
+  textJson         String?  // { text, fontSize, fontFamily, color, align }
+  keyframesJson    String?  // Array of keyframes
+
+  track            Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([trackId, startMs])
+}
+
+model MediaAsset {
+  id                String   @id @default(uuid())
+  userId            String
+  filename          String
+  originalName      String
+  mimeType          String
+  size              BigInt
+  durationSec       Float?
+  width             Int?
+  height            Int?
+  s3Key             String?  // S3 / R2 Cloud Object Key
+  url               String   // Cloud CDN URL or local URL
+  waveformDataJson  String?  // JSON array of normalized audio peaks
+
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model RenderJob {
+  id             String       @id @default(uuid())
+  projectId      String
+  userId         String
+  status         RenderStatus @default(queued)
+  progress       Int          @default(0)
+  currentFrame   Int?
+  totalFrames    Int?
+  fps            Int?
+  s3OutputUrl    String?      // Cloud S3 master video download URL
+  localPath      String?
+  error          String?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([projectId])
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import { AspectRatio } from '../types';
 import {
@@ -8,9 +8,16 @@ import {
   Grid,
   Magnet,
   Layers,
-  Sparkles,
   Monitor,
-  HelpCircle
+  HelpCircle,
+  FolderKanban,
+  Cloud,
+  Check,
+  Loader2,
+  LogIn,
+  LogOut,
+  Database,
+  Cpu
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -28,14 +35,33 @@ export const Header: React.FC = () => {
     rippleEdit,
     toggleRipple,
     setShowExportModal,
-    toggleShortcutsModal
+    toggleShortcutsModal,
+    setShowAuthModal,
+    setShowProjectsModal,
+    saveProjectToCloud,
+    isSavingProject,
+    lastSavedTime,
+    user,
+    logout,
+    infrastructure
   } = useEditorStore();
+
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const aspectRatios: AspectRatio[] = ['16:9', '9:16', '1:1', '4:5', '21:9'];
 
+  const handleCloudSave = async () => {
+    const ok = await saveProjectToCloud();
+    if (ok) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    }
+  };
+
   return (
     <header className="vn-header">
-      {/* Left: Brand & Project Name */}
+      {/* Left: Brand, Project Name & Cloud Database Persistence */}
       <div className="vn-header-left">
         <div className="vn-logo-badge">
           <svg width="24" height="24" viewBox="0 0 100 100" fill="none">
@@ -61,12 +87,46 @@ export const Header: React.FC = () => {
             title="Click to rename project"
           />
         </div>
+
+        {/* Cloud Project Manager & Quick Save */}
+        <div className="cloud-actions-group">
+          <button
+            onClick={() => setShowProjectsModal(true)}
+            className="btn-header-secondary"
+            title="Manage Cloud Projects (PostgreSQL)"
+          >
+            <FolderKanban size={14} className="cyan-icon" />
+            <span>Projects</span>
+          </button>
+
+          <button
+            onClick={handleCloudSave}
+            disabled={isSavingProject}
+            className={`btn-header-secondary save-action-btn ${saveSuccess ? 'save-success' : ''}`}
+            title="Save timeline state to PostgreSQL"
+          >
+            {isSavingProject ? (
+              <Loader2 size={13} className="spin-anim" />
+            ) : saveSuccess ? (
+              <Check size={13} className="green-icon" />
+            ) : (
+              <Cloud size={13} />
+            )}
+            <span>
+              {isSavingProject
+                ? 'Saving...'
+                : saveSuccess
+                ? 'Saved'
+                : 'Save'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Center: Canvas Aspect Ratio & Format */}
       <div className="vn-header-center">
         <div className="aspect-ratio-selector">
-          <Monitor size={14} className="selector-icon" />
+          <Monitor size={13} className="selector-icon" />
           <select
             value={project.canvas.aspectRatio}
             onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
@@ -74,10 +134,7 @@ export const Header: React.FC = () => {
           >
             {aspectRatios.map((ratio) => (
               <option key={ratio} value={ratio}>
-                {ratio === '16:9' ? '16:9 (YouTube/Landscape)' :
-                 ratio === '9:16' ? '9:16 (TikTok/Reels/Shorts)' :
-                 ratio === '1:1' ? '1:1 (Square Feed)' :
-                 ratio === '4:5' ? '4:5 (Portrait)' : '21:9 (Cinematic UltraWide)'}
+                {ratio}
               </option>
             ))}
           </select>
@@ -89,7 +146,7 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: History, Guides, Toggles & Export */}
+      {/* Right: History, Guides, Infrastructure Status, User Profile & Export */}
       <div className="vn-header-right">
         {/* Undo / Redo */}
         <div className="history-buttons">
@@ -146,6 +203,74 @@ export const Header: React.FC = () => {
           <HelpCircle size={16} />
         </button>
 
+        <div className="header-divider" />
+
+        {/* Live Infrastructure Status Indicator (Pillar 56) */}
+        <div
+          className="infra-pill"
+          title={`Database: ${infrastructure?.database || 'PostgreSQL'}\nJob Queue: ${infrastructure?.jobQueue || 'BullMQ Redis'}\nStorage: ${infrastructure?.storage || 'S3 Cloud'}`}
+        >
+          <span className="live-dot" />
+          <Database size={11} className="infra-icon" />
+          <span className="infra-label">Postgres • Redis</span>
+        </div>
+
+        {/* User Account / Auth */}
+        {user ? (
+          <div className="user-profile-box">
+            <button
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              className="user-profile-btn"
+              title="User Account"
+            >
+              <div className="user-avatar-circle">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="user-name-label">{user.name.split(' ')[0]}</span>
+              <span className="user-pro-badge">PRO</span>
+            </button>
+
+            {showUserDropdown && (
+              <div className="user-dropdown-menu">
+                <div className="user-info-row">
+                  <strong>{user.name}</strong>
+                  <span>{user.email}</span>
+                </div>
+                <div className="dropdown-divider" />
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    setShowProjectsModal(true);
+                  }}
+                  className="dropdown-item"
+                >
+                  <FolderKanban size={14} />
+                  <span>My Cloud Projects</span>
+                </button>
+                <button
+                  onClick={() => {
+                    logout();
+                    setShowUserDropdown(false);
+                  }}
+                  className="dropdown-item logout-item"
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="btn-signin"
+            title="Sign in to save projects to cloud database"
+          >
+            <LogIn size={13} />
+            <span>Sign In</span>
+          </button>
+        )}
+
         {/* Primary Export Button */}
         <button
           onClick={() => setShowExportModal(true)}
@@ -164,14 +289,30 @@ export const Header: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 16px;
+          padding: 0 10px;
           z-index: 100;
+          gap: 8px;
         }
 
-        .vn-header-left, .vn-header-center, .vn-header-right {
+        .vn-header-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+
+        .vn-header-center {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+
+        .vn-header-right {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
         }
 
         .vn-logo-badge {
@@ -208,7 +349,7 @@ export const Header: React.FC = () => {
           border-radius: var(--radius-sm);
           outline: none;
           transition: all 0.2s ease;
-          max-width: 200px;
+          max-width: 170px;
         }
 
         .vn-project-title-input:hover {
@@ -219,6 +360,39 @@ export const Header: React.FC = () => {
         .vn-project-title-input:focus {
           background: var(--bg-surface-active);
           border-color: var(--accent-cyan);
+        }
+
+        .cloud-actions-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-header-secondary {
+          height: 28px;
+          background: var(--bg-surface-elevated);
+          border: 1px solid var(--border-subtle);
+          color: var(--text-secondary);
+          border-radius: var(--radius-sm);
+          padding: 0 9px;
+          font-size: 11px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-header-secondary:hover {
+          background: var(--bg-surface-hover);
+          color: var(--text-primary);
+          border-color: var(--border-medium);
+        }
+
+        .save-action-btn.save-success {
+          border-color: #00E676;
+          color: #00E676;
         }
 
         .aspect-ratio-selector {
@@ -274,6 +448,176 @@ export const Header: React.FC = () => {
           background: var(--border-subtle);
         }
 
+        .infra-pill {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(0, 242, 254, 0.06);
+          border: 1px solid rgba(0, 242, 254, 0.2);
+          border-radius: var(--radius-sm);
+          padding: 3px 8px;
+          cursor: default;
+        }
+
+        .live-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #00F2FE;
+          box-shadow: 0 0 6px #00F2FE;
+          animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .infra-icon {
+          color: var(--accent-cyan);
+        }
+
+        .infra-label {
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+
+        .user-profile-box {
+          position: relative;
+        }
+
+        .user-profile-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: var(--bg-surface-elevated);
+          border: 1px solid var(--border-medium);
+          padding: 3px 8px 3px 4px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .user-profile-btn:hover {
+          border-color: var(--accent-cyan);
+        }
+
+        .user-avatar-circle {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #00F2FE, #4FACFE);
+          color: #000;
+          font-weight: 800;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .user-name-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .user-pro-badge {
+          font-size: 8px;
+          font-weight: 800;
+          background: rgba(0, 242, 254, 0.2);
+          color: var(--accent-cyan);
+          padding: 1px 4px;
+          border-radius: 4px;
+        }
+
+        .user-dropdown-menu {
+          position: absolute;
+          top: 36px;
+          right: 0;
+          width: 200px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-medium);
+          border-radius: var(--radius-md);
+          padding: 8px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .user-info-row {
+          display: flex;
+          flex-direction: column;
+          padding: 6px 8px;
+        }
+
+        .user-info-row strong {
+          font-size: 12px;
+          color: var(--text-primary);
+        }
+
+        .user-info-row span {
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        .dropdown-divider {
+          height: 1px;
+          background: var(--border-subtle);
+          margin: 4px 0;
+        }
+
+        .dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: var(--radius-sm);
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          width: 100%;
+          text-align: left;
+        }
+
+        .dropdown-item:hover {
+          background: var(--bg-surface-elevated);
+          color: var(--text-primary);
+        }
+
+        .logout-item:hover {
+          color: #FF5E5E;
+          background: rgba(255, 68, 68, 0.1);
+        }
+
+        .btn-signin {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          height: 28px;
+          padding: 0 10px;
+          background: rgba(0, 242, 254, 0.1);
+          border: 1px solid rgba(0, 242, 254, 0.35);
+          color: var(--accent-cyan);
+          border-radius: var(--radius-sm);
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-signin:hover {
+          background: var(--accent-cyan);
+          color: #000;
+          box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+        }
+
         .disabled {
           opacity: 0.35;
           cursor: not-allowed;
@@ -282,6 +626,14 @@ export const Header: React.FC = () => {
         .export-button {
           margin-left: 6px;
           letter-spacing: 0.5px;
+        }
+
+        .spin-anim {
+          animation: spin 1s linear infinite;
+        }
+
+        .green-icon {
+          color: #00E676;
         }
       `}</style>
     </header>
