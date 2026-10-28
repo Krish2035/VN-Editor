@@ -1,0 +1,202 @@
+/* ==========================================================================
+   VN Video Editor — Obsidian & Neon Design System
+   ========================================================================== */
+
+:root {
+  /* Color Tokens */
+  --bg-canvas: #060709;
+  --bg-base: #0A0C10;
+  --bg-surface: #11141A;
+  --bg-surface-elevated: #161B24;
+  --bg-surface-hover: #1E232F;
+  --bg-surface-active: #252D3D;
+  
+  /* Borders & Dividers */
+  --border-subtle: #181C26;
+  --border-medium: #222736;
+  --border-strong: #30374D;
+  --border-focus: #00F2FE;
+
+  /* VN Signature Accents */
+  --accent-cyan: #00F2FE;
+  --accent-cyan-hover: #38F8FF;
+  --accent-cyan-dim: rgba(0, 242, 254, 0.15);
+  --accent-cyan-glow: 0 0 16px rgba(0, 242, 254, 0.35);
+
+  --accent-amber: #FFB300;
+  --accent-amber-glow: 0 0 12px rgba(255, 179, 0, 0.4);
+
+  --accent-coral: #FF3366;
+  --accent-coral-glow: 0 0 14px rgba(255, 51, 102, 0.4);
+
+  --accent-purple: #9D4EDD;
+  --accent-purple-glow: 0 0 14px rgba(157, 78, 221, 0.4);
+
+  --accent-emerald: #00F5A0;
+  --accent-emerald-glow: 0 0 14px rgba(0, 245, 160, 0.4);
+
+  /* Typography */
+  --text-primary: #FFFFFF;
+  --text-secondary: #9FA7B8;
+  --text-muted: #60687A;
+  --text-inverse: #0A0C10;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', var(--font-sans);
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* Layout Constants */
+  --header-height: 52px;
+  --timeline-toolbar-height: 44px;
+  --ruler-height: 28px;
+  --track-height: 52px;
+  --inspector-width: 340px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7);
+}
+
+/* Reset & Base Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* Button & Interactive Utility Classes */
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Glassmorphism Panel Utility */
+.vn-glass-panel {
+  background: rgba(17, 20, 26, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Primary Cyan Action Button */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-cyan), #0077FE);
+  color: #000;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--accent-cyan-glow);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 0 20px rgba(0, 242, 254, 0.55);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Ghost & Icon Buttons */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+.btn-icon.active {
+  color: var(--accent-cyan);
+  background: var(--accent-cyan-dim);
+}
+
+/* Pill Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-cyan {
+  background: var(--accent-cyan-dim);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.badge-amber {
+  background: rgba(255, 179, 0, 0.15);
+  color: var(--accent-amber);
+  border: 1px solid rgba(255, 179, 0, 0.3);
+}
+
+/* Timecode Display */
+.timecode {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}

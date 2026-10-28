@@ -1,0 +1,10 @@
+html, body, #root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-canvas, #060709);
+  color: var(--text-primary, #FFFFFF);
+  font-family: var(--font-sans, sans-serif);
+}
