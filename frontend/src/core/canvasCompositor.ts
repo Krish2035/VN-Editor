@@ -33,6 +33,72 @@ export const getOrCreateImage = (url: string): HTMLImageElement => {
   return img;
 };
 
+/**
+ * Synchronizes HTML5 video elements with the timeline playhead.
+ * Ensures active clips play smoothly via .play() without 300ms stuttering seeks.
+ */
+export const syncVideoPlayback = (
+  project: VNProject,
+  currentTimeMs: number,
+  isPlaying: boolean
+) => {
+  const activeVideoUrls = new Set<string>();
+  const videoTracks = project.tracks.filter(
+    (t) => (t.type === 'video' || t.type === 'pip') && t.visible && !t.muted
+  );
+
+  for (const track of videoTracks) {
+    for (const clip of track.clips) {
+      const isWithinRange =
+        currentTimeMs >= clip.startMs && currentTimeMs <= clip.startMs + clip.durationMs;
+
+      if (isWithinRange && clip.assetUrl) {
+        activeVideoUrls.add(clip.assetUrl);
+        const video = getOrCreateVideo(clip.assetUrl);
+        const clipOffsetSec = (currentTimeMs - clip.startMs + clip.trimInMs) / 1000;
+
+        if (isPlaying) {
+          // Playback mode: resync only if drift exceeds 120ms to allow smooth hardware decode
+          if (Math.abs(video.currentTime - clipOffsetSec) > 0.12) {
+            video.currentTime = clipOffsetSec;
+          }
+          if (video.paused && video.readyState >= 2) {
+            video.play().catch(() => {
+              // Browser autoplay policy suppression
+            });
+          }
+        } else {
+          // Paused mode (scrubbing): pause playback and accurately position playhead
+          if (!video.paused) {
+            video.pause();
+          }
+          if (Math.abs(video.currentTime - clipOffsetSec) > 0.04) {
+            video.currentTime = clipOffsetSec;
+          }
+        }
+      }
+    }
+  }
+
+  // Pause inactive video elements to conserve GPU / CPU decoding cycles
+  for (const [url, video] of videoCache.entries()) {
+    if (!activeVideoUrls.has(url) && !video.paused) {
+      video.pause();
+    }
+  }
+};
+
+/**
+ * Halts all cached video playback instances (e.g. on unmount or pause)
+ */
+export const pauseAllVideos = () => {
+  for (const video of videoCache.values()) {
+    if (!video.paused) {
+      video.pause();
+    }
+  }
+};
+
 export const interpolateKeyframes = (clip: VNClip, currentTimeMs: number): InterpolatedTransform => {
   const base = { ...clip.transform };
   if (!clip.keyframes || clip.keyframes.length === 0) return base;

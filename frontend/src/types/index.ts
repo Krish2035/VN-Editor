@@ -120,3 +120,18 @@ export interface MediaAssetPreset {
   waveformData?: number[];
 }
 
+export interface MediaAsset {
+  id: string;
+  userId?: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  durationSec?: number;
+  width?: number;
+  height?: number;
+  url: string;
+  waveformData?: number[];
+  createdAt: string;
+}
+

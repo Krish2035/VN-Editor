@@ -1,6 +1,17 @@
 import { AuthUser, InfrastructureStatus, VNProject } from '../types';
 
-const API_BASE = 'http://localhost:5000/api/v1';
+// Dynamic API base: adapts to production domain, Docker, or local dev (Pillar 4, 48)
+const getApiBase = (): string => {
+  if (typeof window !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return `${window.location.origin}/api/v1`;
+  }
+  return 'http://localhost:5000/api/v1';
+};
+
+const API_BASE = getApiBase();
 const TOKEN_KEY = 'vn_editor_jwt_token';
 
 export const getStoredToken = (): string | null => {

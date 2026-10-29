@@ -127,8 +127,12 @@ export const ExportModal: React.FC = () => {
       const resData = await response.json();
       const jobId = resData.data.id;
 
-      // Connect to WebSocket Telemetry Gateway (Pillar 22)
-      const ws = new WebSocket('ws://localhost:5000/ws/render');
+      // Connect to WebSocket Telemetry Gateway with dynamic host resolution (Pillars 22, 48)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = (import.meta as any).env?.VITE_WS_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'ws://localhost:5000/ws/render' : `${protocol}//${window.location.host}/ws/render`);
+      const ws = new WebSocket(wsHost);
+
+      const apiHost = (import.meta as any).env?.VITE_BACKEND_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : window.location.origin);
 
       ws.onmessage = (event) => {
         try {
@@ -140,7 +144,7 @@ export const ExportModal: React.FC = () => {
           } else if (msg.type === 'JOB_COMPLETED' && msg.data.id === jobId) {
             setProgress(100);
             setIsExporting(false);
-            setDownloadUrl(`http://localhost:5000${msg.data.outputUrl}`);
+            setDownloadUrl(`${apiHost}${msg.data.outputUrl}`);
             ws.close();
 
             confetti({

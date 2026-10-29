@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
-import { renderCanvasFrame } from '../core/canvasCompositor';
+import { renderCanvasFrame, syncVideoPlayback, pauseAllVideos } from '../core/canvasCompositor';
 import { audioEngine } from '../core/audioEngine';
 import {
   Play,
@@ -48,12 +48,16 @@ export const PreviewMonitor: React.FC = () => {
       // Sync Web Audio API
       audioEngine.syncPlayback(project.tracks, currentTimeMs, isPlaying);
 
+      // Sync HTML5 Video Playback & Hardware Decode
+      syncVideoPlayback(project, currentTimeMs, isPlaying);
+
       // Advance playhead if playing
       if (isPlaying) {
         const nextTime = currentTimeMs + 1000 / (project.canvas.fps || 60);
         if (nextTime >= project.canvas.durationMs) {
           setCurrentTime(0);
           setIsPlaying(false);
+          pauseAllVideos();
         } else {
           setCurrentTime(nextTime);
         }
@@ -63,7 +67,10 @@ export const PreviewMonitor: React.FC = () => {
     };
 
     animId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animId);
+    return () => {
+      cancelAnimationFrame(animId);
+      pauseAllVideos();
+    };
   }, [project, currentTimeMs, isPlaying, selectedClipId, showSafeMargins, project.canvas.fps]);
 
   // Global Spacebar Play/Pause Shortcut

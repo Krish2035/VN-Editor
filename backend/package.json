@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "echo \"No test specified\" && exit 0"
+    "test": "tsc && node dist/tests/api.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1158.0",

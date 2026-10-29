@@ -73,6 +73,31 @@ export const deleteProject = (id: string): boolean => {
   return false;
 };
 
+export const createDefaultProject = (userId: string = 'guest_user', title: string = 'Untitled VN Project'): VNProject => {
+  const now = new Date().toISOString();
+  return {
+    id: `vn_proj_${uuidv4().substring(0, 8)}`,
+    userId,
+    title,
+    version: 1,
+    createdAt: now,
+    updatedAt: now,
+    canvas: {
+      width: 1920,
+      height: 1080,
+      fps: 60,
+      aspectRatio: '16:9',
+      durationMs: 30000
+    },
+    tracks: createDefaultTracks(),
+    settings: {
+      snapToGrid: true,
+      rippleEdit: true,
+      magnetic: true
+    }
+  };
+};
+
 export const createDefaultTracks = () => [
   {
     id: `track_text_${uuidv4().substring(0, 6)}`,

@@ -61,6 +61,7 @@ export interface VNTrack {
   id: string;
   type: TrackType;
   name: string;
+  visible?: boolean;
   muted: boolean;
   locked: boolean;
   clips: VNClip[];
@@ -106,6 +107,7 @@ export interface RenderJob {
 
 export interface MediaAsset {
   id: string;
+  userId?: string;
   filename: string;
   originalName: string;
   mimeType: string;

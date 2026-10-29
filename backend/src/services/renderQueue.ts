@@ -23,7 +23,12 @@ export const broadcastTelemetry = (eventType: string, data: any) => {
 };
 
 // In-Memory Resilient Queue with Concurrency Limit & DLQ (Pillars 15, 20, 44)
-const jobQueue: RenderJob[] = [];
+interface QueuedItem {
+  job: RenderJob;
+  project: VNProject;
+}
+
+const jobQueue: QueuedItem[] = [];
 const jobsMap = new Map<string, RenderJob>();
 let activeRendersCount = 0;
 const MAX_CONCURRENT_RENDERS = 2; // Protect CPU/memory (Pillars 43, 44)
@@ -48,10 +53,10 @@ export const createRenderJob = (project: VNProject): RenderJob => {
   };
 
   jobsMap.set(jobId, job);
-  jobQueue.push(job);
+  jobQueue.push({ job, project });
   broadcastTelemetry('JOB_CREATED', job);
 
-  processNextJob(project);
+  processNextJob();
   return job;
 };
 
@@ -63,14 +68,15 @@ export const getAllJobs = (): RenderJob[] => {
   return Array.from(jobsMap.values());
 };
 
-const processNextJob = async (project: VNProject) => {
+const processNextJob = async () => {
   if (activeRendersCount >= MAX_CONCURRENT_RENDERS || jobQueue.length === 0) {
     return;
   }
 
-  const job = jobQueue.shift();
-  if (!job) return;
+  const nextItem = jobQueue.shift();
+  if (!nextItem) return;
 
+  const { job, project } = nextItem;
   activeRendersCount++;
   job.status = 'rendering';
   job.updatedAt = new Date().toISOString();
@@ -108,6 +114,6 @@ const processNextJob = async (project: VNProject) => {
   } finally {
     activeRendersCount--;
     // Drain next item in queue
-    processNextJob(project);
+    processNextJob();
   }
 };

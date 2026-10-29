@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. PostgreSQL Database (Pillars 25-32)
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: vn_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vn_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vn_super_secret_db_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-vn_editor}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vn_admin -d vn_editor']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vn_network
+
+  # ==========================================
+  # 2. Redis Distributed Cache & Queue (Pillars 15, 20)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: vn_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vn_network
+
+  # ==========================================
+  # 3. Node.js Backend API & FFmpeg Worker (Pillars 1-5, 43, 56)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vn_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://vn_admin:vn_super_secret_db_2026@postgres:5432/vn_editor?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-vn_editor_super_secret_jwt_key_2026}
+      CLIENT_ORIGIN: http://localhost:80,http://localhost:3000,http://localhost:5173
+    volumes:
+      - vn_uploads:/app/uploads
+      - vn_exports:/app/exports
+      - vn_data:/app/data
+    ports:
+      - '5000:5000'
+    networks:
+      - vn_network
+
+  # ==========================================
+  # 4. Frontend Web Studio (Nginx Reverse Proxy)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vn_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '80:80'
+    networks:
+      - vn_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  vn_uploads:
+  vn_exports:
+  vn_data:
+
+networks:
+  vn_network:
+    driver: bridge
+
