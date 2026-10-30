@@ -61,6 +61,18 @@ app.use('/api', standardLimiter);
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/exports', express.static(EXPORT_DIR));
 
+// Root Endpoint for Load Balancers & Health Monitoring (Pillar 56)
+app.get('/', (req, res) => {
+  res.status(200).json({
+    service: 'VN Video Editor Backend API Gateway',
+    version: '1.0.0',
+    status: 'online',
+    healthCheck: '/api/v1/health',
+    telemetryWebSocket: '/ws/render',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 app.use('/api/v1', apiRoutes);
 
