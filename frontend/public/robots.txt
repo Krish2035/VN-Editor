@@ -6,4 +6,4 @@ Allow: /
 Disallow: /api/
 
 # Primary Sitemap
-Sitemap: https://vneditor.vercel.app/sitemap.xml
+Sitemap: https://vn-editor-eight.vercel.app/sitemap.xml
