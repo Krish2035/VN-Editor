@@ -1,7 +1,17 @@
-# VN-Editor
+# VNEditor — Professional Web Video Editor (Live on Vercel)
 
-> **VN Video Editor (Web Edition)**  
-> A desktop-grade, non-destructive web video editing suite inspired by VN Video Editor (VlogNow), built using HTML5 Canvas, WebGL, Web Audio API, WebCodecs, and a distributed FFmpeg rendering backend following the 112 Pillars of Production Web Architecture.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FKrish2035%2FVN-Editor)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-00F2FE?style=for-the-badge&logo=vercel)](https://vneditor.vercel.app)
+[![Architecture: 112 Pillars](https://img.shields.io/badge/Architecture-112%20Pillars-8A2387?style=for-the-badge)](IMPLEMENTATION_PLAN.md)
+
+> 🎬 **VNEditor (Web Edition)**: A high-performance, non-destructive web video editing suite inspired by VN Video Editor (VlogNow).  
+> Deployed seamlessly on **Vercel** (Frontend SPA) and **Render** (Backend API & FFmpeg Worker) with **Neon Serverless PostgreSQL**.
+
+---
+
+## 🌐 Live Web Studio
+- **Official Vercel Deployment**: [https://vneditor.vercel.app](https://vneditor.vercel.app) *(Replace with your assigned Vercel URL)*
+- **API & Telemetry Gateway**: Hosted on Render (`https://vn-editor-backend.onrender.com`)
 
 ---
 

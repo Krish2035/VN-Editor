@@ -1,0 +1,9 @@
+# Robots.txt for VNEditor (Vercel)
+User-agent: *
+Allow: /
+
+# Disallow internal API endpoints if crawled
+Disallow: /api/
+
+# Primary Sitemap
+Sitemap: https://vneditor.vercel.app/sitemap.xml
